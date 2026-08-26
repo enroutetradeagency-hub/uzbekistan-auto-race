@@ -53,6 +53,14 @@ Yangi HTTPS remote: `https://github.com/enroutetradeagency-hub/uzbekistan-auto-r
 
 - [ ] Repository URL takror tasdiqlangach Connector write ruxsatini qayta tekshirish.
 
+## Connector qayta autentifikatsiyasi
+
+- [ ] GitHub Connector tokenining amaldagi akkaunti va repository permissionlarini tekshirish.
+- [ ] Git transport 403 xatosi repository write, Actions workflow yoki organization policy cheklovidan kelayotganini ajratish.
+- [ ] Ruxsat yangilanganidan keyin push va CI debug APK buildini qayta sinash.
+
+- [ ] Qayta ulangan GitHub Connector tokenida repository uchun Git push ruxsatini tasdiqlash.
+
 - [ ] Repository kirishi qayta tekshirilgach GitHub Actions debug APK buildini ishga tushirish.
 
 ## GitHub Connector ruxsat tekshiruvi
