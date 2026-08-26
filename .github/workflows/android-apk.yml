@@ -9,6 +9,8 @@ name: Android APK
         default: "debug"
         type: choice
         options: [debug, release]
+  repository_dispatch:
+    types: [android-debug]
   push:
     branches: [main]
     paths:
