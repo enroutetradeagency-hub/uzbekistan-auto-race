@@ -43,9 +43,24 @@
 
 Repository manzili: `temurbekhan7-web/uzbekistan-auto-race`.
 
-HTTPS remote: `https://github.com/temurbekkhan7-web/uzbekistan-auto-race.git`.
+HTTPS remote: `https://github.com/temurbekhan7-web/uzbekistan-auto-race.git`.
+
+Yangi HTTPS remote: `https://github.com/enroutetradeagency-hub/uzbekistan-auto-race.git`.
+
+- [ ] `enroutetradeagency-hub/uzbekistan-auto-race` repository uchun Connector orqali read va push ruxsatlarini tekshirish.
+
+- [ ] Yangilangan write ruxsati tasdiqlangach o‘yin commitini repositoryga push qilish va debug APK buildini ishga tushirish.
+
+- [ ] Repository URL takror tasdiqlangach Connector write ruxsatini qayta tekshirish.
 
 - [ ] Repository kirishi qayta tekshirilgach GitHub Actions debug APK buildini ishga tushirish.
+
+## GitHub Connector ruxsat tekshiruvi
+
+- [ ] Ulangan GitHub Connector akkauntining login nomini tekshirish.
+- [ ] `temurbekhan7-web/uzbekistan-auto-race` repository uchun API orqali read ko‘rinishini tekshirish.
+- [ ] Connector tokenida write/push huquqi borligini tekshirish.
+- [ ] Akkaunt mos kelmasa, GitHub Connector’ni repository egasi hisobiga qayta autentifikatsiya qilishni so‘rash.
 - [ ] Android o‘yin kodi va CI workflow’ini repositoryga push qilish.
 - [ ] GitHub Actions debug APK workflow’ini ishga tushirish va build natijasini tekshirish.
 - [ ] Muvaffaqiyatli debug APK artefaktini yuklab olish uchun olish.
