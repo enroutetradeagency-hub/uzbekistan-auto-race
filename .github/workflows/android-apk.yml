@@ -1,7 +1,6 @@
 # Android CI: main branchga yuborilgan har bir o‘yin buildi debug APK artefaktini hosil qiladi.
 name: Android APK
-
-on:
+"on":
   workflow_dispatch:
     inputs:
       build_type:
