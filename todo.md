@@ -78,10 +78,10 @@ Yangi HTTPS remote: `https://github.com/enroutetradeagency-hub/uzbekistan-auto-r
 
 ## Fotorealistik mobil racing iteratsiyasi
 
-- [ ] Joriy Babylon.js material, yoritish va mobil render byudjetini audit qilish.
-- [ ] Asfalt uchun PBR yo‘l qoplamasi, yoriq, chang, rezina izi va refleks materiallarini tayyorlash.
-- [ ] Avtomobil kuzovi, oynasi, xromi va faralari uchun realistik materiallarni qo‘shish.
-- [ ] Toshkent, Sirdaryo va Jizzax uchun batafsil yo‘l cheti, daraxt, uy, tog‘, dala hamda yo‘l belgisi assetlarini qo‘shish.
-- [ ] Quyosh/ambient lighting, soyalar, atrof-muhit akslari, tuman, yomg‘ir, chang va tezlik post-effektlarini integratsiya qilish.
-- [ ] High/Medium/Low rejimlarda rendering sifatini va FPS yuklamasini moslashtirish.
-- [ ] Yangilangan grafikani Android landscape’da tekshirib, GitHub Actions orqali yangi debug APK yaratish.
+- [x] Joriy Babylon.js material, yoritish va mobil render byudjetini audit qilish.
+- [x] Asfalt uchun PBR yo‘l qoplamasi, yoriq, chang, rezina izi va refleks materiallarini tayyorlash.
+- [x] Avtomobil kuzovi, oynasi, xromi va faralari uchun realistik materiallarni qo‘shish.
+- [x] Toshkent, Sirdaryo va Jizzax uchun batafsil yo‘l cheti, daraxt, uy, tog‘, dala hamda yo‘l belgisi assetlarini qo‘shish.
+- [x] Quyosh/ambient lighting, soyalar, atrof-muhit akslari, tuman, yomg‘ir, chang va tezlik post-effektlarini integratsiya qilish.
+- [x] High/Medium/Low rejimlarda rendering sifatini va FPS yuklamasini moslashtirish.
+- [x] Yangilangan grafikani Android landscape’da tekshirib, GitHub Actions orqali yangi debug APK yaratish.
