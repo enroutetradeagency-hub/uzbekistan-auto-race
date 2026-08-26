@@ -1,6 +1,8 @@
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import type { Scene } from "@babylonjs/core/scene";
+import type { DefaultRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline";
+import type { MotionBlurPostProcess } from "@babylonjs/core/PostProcesses/motionBlurPostProcess";
 import { Vehicle, type VehicleControls } from "../actors/Vehicle";
 import { AIRacer } from "../actors/AIRacer";
 import { CameraController } from "../systems/CameraController";
@@ -99,6 +101,7 @@ export class GameWorld {
       bodyStyle: car.bodyStyle,
       modelId: car.id,
     });
+    this.environment.registerShadowCasters(this.player.root.getChildMeshes());
   }
 
   private createRivals(): void {
@@ -110,6 +113,10 @@ export class GameWorld {
       return new AIRacer(this.scene, `ai-${this.region.id}-${car.id}`, car.defaultColor, car.maxSpeed * 0.74 - index * 0.9, index % 2 ? -1.65 : 1.65);
     });
     this.traffic = [new AIRacer(this.scene, `traffic-${this.region.id}-damas`, "#E8E7DE", 22, -3.1), new AIRacer(this.scene, `traffic-${this.region.id}-service`, "#8E9B9A", 25, 3.15)];
+    this.environment.registerShadowCasters([
+      ...this.rivals.flatMap((rival) => rival.vehicle.root.getChildMeshes()),
+      ...this.traffic.flatMap((vehicle) => vehicle.vehicle.root.getChildMeshes()),
+    ]);
   }
 
   private handleKey = (event: KeyboardEvent): void => {
@@ -136,7 +143,25 @@ export class GameWorld {
     this.player.root.position.copyFrom(point); this.player.root.position.y = 0.06; this.player.heading = Math.atan2(tangent.x, tangent.z); this.player.root.rotation.y = this.player.heading; this.player.speed = 46 + Math.sin(this.demoProgress * 0.1) * 4; this.player.nitro = 72 + Math.sin(this.demoProgress * 0.2) * 20; this.player.drift = Math.sin(this.demoProgress * 0.09) * 0.12;
   }
   private nextWeather(): void { const current = this.environment.nextWeather(); this.warning = current === "YOMG‘IR" ? "YO‘L NAM: BURILISHDA EHTIYOT BO‘L." : `${current} REJIMI FAOL`; this.warningTimer = 2.4; }
-  private setGraphics(profile: GraphicsProfile, announce = true): void { this.graphics = profile; const hardwareScale: Record<GraphicsProfile, number> = { HIGH: 1, MEDIUM: 1.2, LOW: 1.55 }; this.engine.setHardwareScalingLevel(hardwareScale[profile]); this.canvas.dataset.graphics = profile; if (announce) { this.warning = `${profile} GRAFIKA REJIMI`; this.warningTimer = 1.4; } }
+  private setGraphics(profile: GraphicsProfile, announce = true): void {
+    this.graphics = profile;
+    const hardwareScale: Record<GraphicsProfile, number> = { HIGH: 1, MEDIUM: 1.2, LOW: 1.55 };
+    this.engine.setHardwareScalingLevel(hardwareScale[profile]);
+    this.environment.setQuality(profile);
+    const visualMetadata = (this.scene.metadata ?? {}) as { cinematicPipeline?: DefaultRenderingPipeline; cinematicMotionBlur?: MotionBlurPostProcess };
+    const cinematic = visualMetadata.cinematicPipeline;
+    if (cinematic) {
+      cinematic.fxaaEnabled = true;
+      cinematic.sharpenEnabled = profile !== "LOW";
+      cinematic.bloomEnabled = profile !== "LOW";
+      cinematic.bloomWeight = profile === "HIGH" ? 0.16 : 0.09;
+      if (visualMetadata.cinematicMotionBlur) {
+        visualMetadata.cinematicMotionBlur.motionStrength = profile === "HIGH" ? 0.34 : 0;
+      }
+    }
+    this.canvas.dataset.graphics = profile;
+    if (announce) { this.warning = `${profile} GRAFIKA REJIMI`; this.warningTimer = 1.4; }
+  }
   private finishRace(): void {
     this.raceState = "finished";
     this.progress.highestUnlockedRegion = Math.max(this.progress.highestUnlockedRegion, Math.min(REGIONS.length - 1, this.regionIndex + 1));

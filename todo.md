@@ -75,3 +75,13 @@ Yangi HTTPS remote: `https://github.com/enroutetradeagency-hub/uzbekistan-auto-r
 - [x] GitHub Actions debug APK workflow’ini ishga tushirish va build natijasini tekshirish.
 - [x] Muvaffaqiyatli debug APK artefaktini yuklab olish uchun olish.
 - [x] Release APK workflow’ini signing uchun tayyor holatda tasdiqlash.
+
+## Fotorealistik mobil racing iteratsiyasi
+
+- [ ] Joriy Babylon.js material, yoritish va mobil render byudjetini audit qilish.
+- [ ] Asfalt uchun PBR yo‘l qoplamasi, yoriq, chang, rezina izi va refleks materiallarini tayyorlash.
+- [ ] Avtomobil kuzovi, oynasi, xromi va faralari uchun realistik materiallarni qo‘shish.
+- [ ] Toshkent, Sirdaryo va Jizzax uchun batafsil yo‘l cheti, daraxt, uy, tog‘, dala hamda yo‘l belgisi assetlarini qo‘shish.
+- [ ] Quyosh/ambient lighting, soyalar, atrof-muhit akslari, tuman, yomg‘ir, chang va tezlik post-effektlarini integratsiya qilish.
+- [ ] High/Medium/Low rejimlarda rendering sifatini va FPS yuklamasini moslashtirish.
+- [ ] Yangilangan grafikani Android landscape’da tekshirib, GitHub Actions orqali yangi debug APK yaratish.

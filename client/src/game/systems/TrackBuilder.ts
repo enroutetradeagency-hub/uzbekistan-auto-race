@@ -3,6 +3,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import type { Scene } from "@babylonjs/core/scene";
 import { ASSETS } from "../assets";
@@ -48,6 +49,24 @@ export class TrackData {
   }
 }
 
+function createPbrAsphalt(scene: Scene, name: string, repeats: number, tint = new Color3(0.36, 0.36, 0.34)): PBRMaterial {
+  const material = new PBRMaterial(name, scene);
+  const dryTexture = new Texture(ASSETS.asphaltDryAAA, scene);
+  const wetTexture = new Texture(ASSETS.asphaltWetAAA, scene);
+  [dryTexture, wetTexture].forEach((texture) => { texture.uScale = repeats; texture.vScale = 2.7; texture.anisotropicFilteringLevel = 8; });
+  material.albedoTexture = dryTexture;
+  material.albedoColor = tint;
+  material.metallic = 0.04;
+  material.roughness = 0.58;
+  material.directIntensity = 1.08;
+  material.environmentIntensity = 0.74;
+  material.emissiveColor = tint.scale(0.13);
+  material.metadata = { dryTexture, wetTexture };
+  const metadata = (scene.metadata ??= {}) as { roadMaterials?: PBRMaterial[] };
+  (metadata.roadMaterials ??= []).push(material);
+  return material;
+}
+
 function buildLoopPoints(): Vector3[] {
   const points: Vector3[] = [];
   const count = 96;
@@ -70,13 +89,7 @@ export function buildTashkentTrack(scene: Scene): TrackData {
     { pathArray: [left, right], closeArray: false, closePath: true, sideOrientation: Mesh.DOUBLESIDE },
     scene,
   );
-  const roadMaterial = new StandardMaterial("road-material", scene);
-  const roadTexture = new Texture(ASSETS.asphalt, scene);
-  roadTexture.uScale = 18;
-  roadTexture.vScale = 2.2;
-  roadMaterial.diffuseTexture = roadTexture;
-  roadMaterial.diffuseColor = new Color3(0.18, 0.18, 0.165);
-  roadMaterial.specularColor = new Color3(0.03, 0.03, 0.03);
+  const roadMaterial = createPbrAsphalt(scene, "road-material", 18, new Color3(0.33, 0.33, 0.31));
   road.material = roadMaterial;
 
   const shoulderMaterial = new StandardMaterial("shoulder-material", scene);
@@ -108,8 +121,8 @@ export function buildTashkentTrack(scene: Scene): TrackData {
   }
 
   const markerMaterial = new StandardMaterial("marker-material", scene);
-  markerMaterial.diffuseColor = new Color3(0.95, 0.73, 0.23);
-  markerMaterial.emissiveColor = new Color3(0.16, 0.09, 0.01);
+  markerMaterial.diffuseColor = new Color3(0.92, 0.88, 0.72);
+  markerMaterial.emissiveColor = new Color3(0.025, 0.022, 0.014);
   markerMaterial.specularColor = Color3.Black();
   for (let index = 0; index < track.points.length; index += 4) {
     const point = track.points[index];
@@ -150,13 +163,7 @@ function buildSirdaryoLoopPoints(): Vector3[] {
 
 export function buildSirdaryoTrack(scene: Scene): TrackData {
   const track = new TrackData(buildSirdaryoLoopPoints(), 10.8);
-  const roadMaterial = new StandardMaterial("sirdaryo-road-material", scene);
-  const roadTexture = new Texture(ASSETS.asphalt, scene);
-  roadTexture.uScale = 25;
-  roadTexture.vScale = 2.6;
-  roadMaterial.diffuseTexture = roadTexture;
-  roadMaterial.diffuseColor = new Color3(0.12, 0.125, 0.112);
-  roadMaterial.specularColor = Color3.Black();
+  const roadMaterial = createPbrAsphalt(scene, "sirdaryo-road-material", 25, new Color3(0.29, 0.3, 0.28));
   const shoulderMaterial = new StandardMaterial("sirdaryo-shoulder-material", scene);
   shoulderMaterial.diffuseColor = new Color3(0.36, 0.285, 0.14);
   shoulderMaterial.specularColor = Color3.Black();
@@ -216,13 +223,7 @@ function buildJizzaxLoopPoints(): Vector3[] {
 
 export function buildJizzaxTrack(scene: Scene): TrackData {
   const track = new TrackData(buildJizzaxLoopPoints(), 9.2);
-  const roadMaterial = new StandardMaterial("jizzax-road-material", scene);
-  const roadTexture = new Texture(ASSETS.asphalt, scene);
-  roadTexture.uScale = 23;
-  roadTexture.vScale = 2.4;
-  roadMaterial.diffuseTexture = roadTexture;
-  roadMaterial.diffuseColor = new Color3(0.13, 0.14, 0.13);
-  roadMaterial.specularColor = new Color3(0.04, 0.04, 0.04);
+  const roadMaterial = createPbrAsphalt(scene, "jizzax-road-material", 23, new Color3(0.31, 0.32, 0.3));
   const shoulderMaterial = new StandardMaterial("jizzax-shoulder-material", scene);
   shoulderMaterial.diffuseColor = new Color3(0.33, 0.24, 0.14);
   const markerMaterial = new StandardMaterial("jizzax-marker-material", scene);
@@ -266,7 +267,7 @@ export function buildRegionalTrack(scene: Scene, regionId: string): TrackData {
     points.push(new Vector3(x, 0.06, z));
   }
   const track = new TrackData(points, shape.width);
-  const roadMaterial = new StandardMaterial(`${regionId}-road-material`, scene); const roadTexture = new Texture(ASSETS.asphalt, scene); roadTexture.uScale = 22; roadTexture.vScale = 2.3; roadMaterial.diffuseTexture = roadTexture; roadMaterial.diffuseColor = shape.hue; roadMaterial.specularColor = Color3.Black();
+  const roadMaterial = createPbrAsphalt(scene, `${regionId}-road-material`, 22, shape.hue.scale(2.18));
   const shoulderMaterial = new StandardMaterial(`${regionId}-shoulder-material`, scene); shoulderMaterial.diffuseColor = regionId === "buxoro" || regionId === "xorazm" ? new Color3(.39,.29,.13) : new Color3(.3,.25,.15);
   const markerMaterial = new StandardMaterial(`${regionId}-marker-material`, scene); markerMaterial.diffuseColor = new Color3(.72,.67,.49);
   for (let index = 0; index < track.points.length; index += 1) {

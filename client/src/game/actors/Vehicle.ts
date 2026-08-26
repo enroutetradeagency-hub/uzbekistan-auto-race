@@ -4,6 +4,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import type { Scene } from "@babylonjs/core/scene";
 import type { TrackData } from "../systems/TrackBuilder";
@@ -48,9 +49,9 @@ export class Vehicle {
       premium: { width: 1.93, chassisHeight: 0.55, depth: 4.65, cabinWidth: 1.63, cabinHeight: 0.64, cabinDepth: 2.26, cabinY: 1.23, wheelBase: 1.54, wheelSize: 0.74 },
     };
     const dimensions = geometry[bodyStyle];
-    const bodyMaterial = new StandardMaterial(`${name}-paint`, scene); bodyMaterial.diffuseColor = Color3.FromHexString(color); bodyMaterial.specularColor = new Color3(0.65, 0.65, 0.65); bodyMaterial.specularPower = 92;
-    const darkMaterial = new StandardMaterial(`${name}-dark`, scene); darkMaterial.diffuseColor = new Color3(0.035, 0.045, 0.055); darkMaterial.specularColor = new Color3(0.14, 0.16, 0.18);
-    const glassMaterial = new StandardMaterial(`${name}-glass`, scene); glassMaterial.diffuseColor = new Color3(0.08, 0.18, 0.23); glassMaterial.alpha = 0.86; glassMaterial.specularColor = new Color3(0.9, 0.9, 0.95);
+    const bodyMaterial = new PBRMaterial(`${name}-paint`, scene); bodyMaterial.albedoColor = Color3.FromHexString(color); bodyMaterial.metallic = 0.48; bodyMaterial.roughness = 0.22; bodyMaterial.environmentIntensity = 0.9; bodyMaterial.directIntensity = 1.15; bodyMaterial.emissiveColor = Color3.FromHexString(color).scale(0.09);
+    const darkMaterial = new PBRMaterial(`${name}-dark`, scene); darkMaterial.albedoColor = new Color3(0.018, 0.024, 0.03); darkMaterial.metallic = 0.62; darkMaterial.roughness = 0.34;
+    const glassMaterial = new PBRMaterial(`${name}-glass`, scene); glassMaterial.albedoColor = new Color3(0.045, 0.13, 0.19); glassMaterial.alpha = 0.76; glassMaterial.metallic = 0.12; glassMaterial.roughness = 0.08; glassMaterial.indexOfRefraction = 1.46; glassMaterial.environmentIntensity = 1.25;
     const lightMaterial = new StandardMaterial(`${name}-headlights`, scene); lightMaterial.diffuseColor = new Color3(0.95, 0.83, 0.5); lightMaterial.emissiveColor = new Color3(0.7, 0.48, 0.14);
     const chassis = MeshBuilder.CreateBox(`${name}-chassis`, { width: dimensions.width, height: dimensions.chassisHeight, depth: dimensions.depth }, scene); chassis.parent = this.root; chassis.position.y = dimensions.chassisHeight / 2 + 0.43; chassis.material = bodyMaterial;
     this.cabin = MeshBuilder.CreateBox(`${name}-cabin`, { width: dimensions.cabinWidth, height: dimensions.cabinHeight, depth: dimensions.cabinDepth }, scene); this.cabin.parent = this.root; this.cabin.position = new Vector3(0, dimensions.cabinY, bodyStyle === "van" ? -0.22 : -0.18); this.cabin.material = glassMaterial;
@@ -63,9 +64,11 @@ export class Vehicle {
       const brakeMaterial = new StandardMaterial(`${name}-brakes-${side}`, scene); brakeMaterial.diffuseColor = new Color3(0.55, 0.03, 0.02); brakeMaterial.emissiveColor = new Color3(0.16, 0, 0); this.brakeMaterials.push(brakeMaterial);
       const brake = MeshBuilder.CreateBox(`${name}-brake-${side}`, { width: 0.42, height: 0.13, depth: 0.08 }, scene); brake.parent = this.root; brake.position = new Vector3(side === 0 ? -lightOffset : lightOffset, 0.83, -dimensions.depth / 2 - 0.06); brake.material = brakeMaterial;
     });
-    const wheelMaterial = new StandardMaterial(`${name}-rubber`, scene); wheelMaterial.diffuseColor = new Color3(0.025, 0.025, 0.024); wheelMaterial.specularColor = Color3.Black();
+    const wheelMaterial = new PBRMaterial(`${name}-rubber`, scene); wheelMaterial.albedoColor = new Color3(0.018, 0.019, 0.018); wheelMaterial.metallic = 0; wheelMaterial.roughness = 0.87;
     [[-dimensions.width / 2 - 0.06, dimensions.wheelBase], [dimensions.width / 2 + 0.06, dimensions.wheelBase], [-dimensions.width / 2 - 0.06, -dimensions.wheelBase], [dimensions.width / 2 + 0.06, -dimensions.wheelBase]].forEach(([x, z], index) => {
       const wheel = MeshBuilder.CreateCylinder(`${name}-wheel-${index}`, { diameter: dimensions.wheelSize, height: 0.28, tessellation: 18 }, scene); wheel.parent = this.root; wheel.position = new Vector3(x, 0.42, z); wheel.rotation.z = Math.PI / 2; wheel.material = wheelMaterial; this.wheels.push(wheel);
+      const rimMaterial = new PBRMaterial(`${name}-rim-${index}`, scene); rimMaterial.albedoColor = new Color3(0.38, 0.4, 0.42); rimMaterial.metallic = 0.92; rimMaterial.roughness = 0.24;
+      const rim = MeshBuilder.CreateCylinder(`${name}-rim-${index}`, { diameter: dimensions.wheelSize * 0.54, height: 0.3, tessellation: 18 }, scene); rim.parent = this.root; rim.position = new Vector3(x, 0.42, z); rim.rotation.z = Math.PI / 2; rim.material = rimMaterial;
     });
     const signature = (kind: "spoiler" | "grille" | "stripe" | "rack" | "skid"): void => {
       if (kind === "rack") {

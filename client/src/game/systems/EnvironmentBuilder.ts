@@ -1,10 +1,14 @@
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
+import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import type { Scene } from "@babylonjs/core/scene";
 import { ASSETS } from "../assets";
 import type { TrackData } from "./TrackBuilder";
@@ -14,6 +18,7 @@ export type WeatherMode = "KUN" | "SHOM" | "YOMG‘IR" | "TUN";
 export class EnvironmentBuilder {
   private readonly hemisphere: HemisphericLight;
   private readonly sun: DirectionalLight;
+  private readonly shadow: ShadowGenerator;
   private readonly skyMaterial: StandardMaterial;
   private readonly lamps: StandardMaterial[] = [];
   private weather: WeatherMode = "KUN";
@@ -22,30 +27,48 @@ export class EnvironmentBuilder {
   constructor(private readonly scene: Scene, track: TrackData, private readonly regionId = "tashkent") {
     this.scene.clearColor = new Color4(0.34, 0.56, 0.68, 1);
     this.hemisphere = new HemisphericLight("sky-fill", new Vector3(0.2, 1, 0.1), scene);
-    this.hemisphere.intensity = 0.88;
-    this.hemisphere.groundColor = new Color3(0.22, 0.17, 0.11);
+    this.hemisphere.intensity = 1.22;
+    this.hemisphere.groundColor = new Color3(0.33, 0.25, 0.16);
     this.sun = new DirectionalLight("sun", new Vector3(-0.45, -1, -0.2), scene);
     this.sun.position = new Vector3(55, 70, -40);
-    this.sun.intensity = 1.18;
+    this.sun.intensity = 1.6;
+    this.sun.autoCalcShadowZBounds = true;
+    this.shadow = new ShadowGenerator(1024, this.sun);
+    this.shadow.usePercentageCloserFiltering = true;
+    this.shadow.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+    this.shadow.bias = 0.00045;
+    this.shadow.setDarkness(0.28);
 
     const isSirdaryo = regionId === "sirdaryo";
     const isJizzax = regionId === "jizzax";
     const ground = MeshBuilder.CreateGround(`${regionId}-ground`, { width: isSirdaryo ? 390 : isJizzax ? 310 : 260, height: isSirdaryo ? 290 : isJizzax ? 270 : 220, subdivisions: 2 }, scene);
-    const groundMaterial = new StandardMaterial("steppe-material", scene);
+    const groundMaterial = new PBRMaterial("steppe-material", scene);
     const steppeTexture = new Texture(ASSETS.steppe, scene);
     steppeTexture.uScale = isSirdaryo ? 28 : isJizzax ? 22 : 16;
     steppeTexture.vScale = isSirdaryo ? 22 : isJizzax ? 20 : 14;
-    groundMaterial.diffuseTexture = steppeTexture;
-    groundMaterial.specularColor = Color3.Black();
+    steppeTexture.anisotropicFilteringLevel = 8;
+    groundMaterial.albedoTexture = steppeTexture;
+    groundMaterial.albedoColor = new Color3(0.72, 0.69, 0.57);
+    groundMaterial.metallic = 0;
+    groundMaterial.roughness = 0.94;
+    groundMaterial.directIntensity = 0.95;
+    groundMaterial.emissiveColor = new Color3(0.055, 0.048, 0.03);
     ground.material = groundMaterial;
 
-    if (regionId === "tashkent") {
-      const backdrop = MeshBuilder.CreatePlane("tashkent-foothills", { width: 520, height: 105 }, scene);
-      backdrop.position = new Vector3(0, 42, 210);
-      backdrop.rotation.y = Math.PI;
+    if (["tashkent", "sirdaryo", "jizzax"].includes(regionId)) {
+      const panorama = regionId === "sirdaryo" ? ASSETS.sirdaryoPanorama : regionId === "jizzax" ? ASSETS.jizzaxPanorama : ASSETS.tashkentPanorama;
+      const backdrop = MeshBuilder.CreatePlane(`${regionId}-cinematic-backdrop`, { width: regionId === "sirdaryo" ? 760 : 700, height: 158 }, scene);
+      backdrop.position = new Vector3(0, 62, 320);
+      backdrop.billboardMode = Mesh.BILLBOARDMODE_Y;
+      backdrop.infiniteDistance = true;
+      backdrop.isPickable = false;
       const backdropMaterial = new StandardMaterial("foothills-material", scene);
-      backdropMaterial.diffuseTexture = new Texture(ASSETS.foothills, scene);
-      backdropMaterial.emissiveColor = new Color3(0.33, 0.33, 0.33);
+      const panoramaTexture = new Texture(panorama, scene);
+      backdropMaterial.diffuseTexture = panoramaTexture;
+      backdropMaterial.emissiveTexture = panoramaTexture;
+      backdropMaterial.emissiveColor = new Color3(0.62, 0.62, 0.62);
+      backdropMaterial.specularColor = Color3.Black();
+      backdropMaterial.disableLighting = true;
       backdropMaterial.backFaceCulling = false;
       backdrop.material = backdropMaterial;
     }
@@ -53,12 +76,24 @@ export class EnvironmentBuilder {
     const sky = MeshBuilder.CreateSphere("sky-dome", { diameter: 420, segments: 16, sideOrientation: 1 }, scene);
     this.skyMaterial = new StandardMaterial("sky-material", scene);
     this.skyMaterial.backFaceCulling = false;
-    this.skyMaterial.diffuseColor = new Color3(0.17, 0.38, 0.48);
-    this.skyMaterial.emissiveColor = new Color3(0.065, 0.14, 0.18);
+    this.skyMaterial.diffuseColor = new Color3(0.34, 0.53, 0.64);
+    this.skyMaterial.emissiveColor = new Color3(0.11, 0.19, 0.24);
     this.skyMaterial.specularColor = Color3.Black();
+    this.skyMaterial.disableLighting = true;
     sky.material = this.skyMaterial;
+    sky.isVisible = false;
     if (isSirdaryo) this.addSirdaryoProps(track); else if (isJizzax) this.addJizzaxProps(track); else if (regionId === "tashkent") this.addRoadsideProps(track); else this.addRegionalProps(track);
+    scene.meshes.forEach((mesh) => { mesh.receiveShadows = true; });
     this.setWeather("KUN");
+  }
+
+  registerShadowCasters(meshes: AbstractMesh[]): void {
+    meshes.forEach((mesh) => this.shadow.addShadowCaster(mesh, true));
+  }
+
+  setQuality(profile: "HIGH" | "MEDIUM" | "LOW"): void {
+    this.shadow.filteringQuality = profile === "HIGH" ? ShadowGenerator.QUALITY_HIGH : ShadowGenerator.QUALITY_LOW;
+    this.shadow.setDarkness(profile === "HIGH" ? 0.26 : profile === "MEDIUM" ? 0.2 : 0.13);
   }
 
   private addRegionalProps(track: TrackData): void {
@@ -223,12 +258,19 @@ export class EnvironmentBuilder {
   setWeather(mode: WeatherMode): void {
     this.weather = mode;
     const profiles: Record<WeatherMode, { clear: Color4; sky: Color3; sun: number; fill: number; fog: number; lamp: number }> = {
-      KUN: { clear: new Color4(0.34, 0.56, 0.68, 1), sky: new Color3(0.17, 0.38, 0.48), sun: 1.08, fill: 0.77, fog: 0.00055, lamp: 0.14 },
-      SHOM: { clear: new Color4(0.64, 0.38, 0.23, 1), sky: new Color3(0.42, 0.16, 0.1), sun: 0.72, fill: 0.65, fog: 0.0018, lamp: 0.32 },
+      KUN: { clear: new Color4(0.47, 0.66, 0.76, 1), sky: new Color3(0.34, 0.53, 0.64), sun: 1.5, fill: 1.15, fog: 0.00042, lamp: 0.14 },
+      SHOM: { clear: new Color4(0.68, 0.44, 0.27, 1), sky: new Color3(0.52, 0.24, 0.13), sun: 0.95, fill: 0.78, fog: 0.0014, lamp: 0.32 },
       "YOMG‘IR": { clear: new Color4(0.3, 0.37, 0.41, 1), sky: new Color3(0.11, 0.15, 0.18), sun: 0.46, fill: 0.5, fog: 0.0043, lamp: 0.42 },
       TUN: { clear: new Color4(0.015, 0.035, 0.08, 1), sky: new Color3(0.01, 0.02, 0.06), sun: 0.16, fill: 0.23, fog: 0.003, lamp: 0.95 },
     };
     const profile = profiles[mode];
+    const roadMaterials = ((this.scene.metadata ?? {}) as { roadMaterials?: PBRMaterial[] }).roadMaterials ?? [];
+    roadMaterials.forEach((material) => {
+      const textures = material.metadata as { dryTexture?: Texture; wetTexture?: Texture } | undefined;
+      material.albedoTexture = mode === "YOMG‘IR" ? textures?.wetTexture ?? material.albedoTexture : textures?.dryTexture ?? material.albedoTexture;
+      material.roughness = mode === "YOMG‘IR" ? 0.24 : mode === "TUN" ? 0.42 : 0.58;
+      material.environmentIntensity = mode === "YOMG‘IR" ? 1.14 : 0.74;
+    });
     this.scene.clearColor = profile.clear; this.skyMaterial.diffuseColor = profile.sky; this.skyMaterial.emissiveColor = profile.sky.scale(0.4); this.sun.intensity = profile.sun; this.hemisphere.intensity = profile.fill;
     this.scene.fogEnabled = Boolean(profile.fog); this.scene.fogDensity = profile.fog; this.scene.fogColor = new Color3(profile.clear.r, profile.clear.g, profile.clear.b);
     this.lamps.forEach((material) => { material.emissiveColor = new Color3(profile.lamp, profile.lamp * 0.38, profile.lamp * 0.05); });
