@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">UZBEKISTAN AUTO RACE</string>
+    <string name="title_activity_main">UZBEKISTAN AUTO RACE</string>
+    <string name="package_name">uz.manus.uzbekistanautorace</string>
+    <string name="custom_url_scheme">uz.manus.uzbekistanautorace</string>
+</resources>

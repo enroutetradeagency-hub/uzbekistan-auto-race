@@ -18,3 +18,35 @@
 - [x] Garajda mashina tanlash, rang almashtirish, tezlanish/tezlik/handling upgrade’lari va local progress saqlanishini yaratish.
 - [x] Tanlangan mashina va upgrade’lar Toshkent hamda Sirdaryo gameplayiga amalda qo‘llanishini tekshirish.
 - [x] Android landscape’da Toshkent, Sirdaryo va Garaj oqimini tekshirish; TypeScript va production buildni o‘tkazish.
+
+## Jizzax, 12 viloyat va Android APK iteratsiyasi
+
+- [ ] Jizzaxni Forish tog‘-tekislik trassasi bilan to‘liq boshqariladigan uchinchi bosqich sifatida qo‘shish.
+- [ ] Toshkent → Sirdaryo → Jizzax unlock oqimini Jizzax gameplayiga bog‘lash.
+- [ ] Samarqanddan Xorazmgacha qolgan 9 viloyat uchun alohida trassa va muhit presetlarini kiritish.
+- [ ] Mashina faralari, yomg‘ir/tuman/chang ta’siri, yo‘l belgilari, svetofor va oddiy traffic oqimini qo‘shish.
+- [ ] Motor, shina va tormoz tovushlarini avtomobil tezligi hamda holatiga ulash.
+- [ ] Android APK uchun Capacitor konfiguratsiyasi, Android loyiha fayllari va build yo‘riqnomasini yaratish.
+- [ ] 12 viloyat oqimi, Jizzax driving, audio/ob-havo va Android build konfiguratsiyasini tekshirish.
+
+## Android CI APK iteratsiyasi
+
+- [ ] GitHub Actions Android CI workflow’ini API 36 va Build-Tools 35 bilan yaratish.
+- [ ] Debug APK artefaktini CI buildida yig‘ish va yuklab olinadigan fayl sifatida saqlash.
+- [ ] Release signing secretlari mavjud bo‘lganda imzolangan release APK/AAB yo‘lini qo‘shish.
+- [ ] Native Android manifest, landscape yo‘nalishi va WebView paketlash sozlamalarini tekshirish.
+- [ ] CI buildga yuborish va APK artefaktini olish uchun GitHub repository ulash talabini hujjatlashtirish.
+
+## GitHub Actions APK bajarilishi
+
+- [ ] `UZBEKISTAN_GITHUB_USERNAME/uzbekistan-auto-race` repository remote’ini ulash.
+
+Repository manzili: `temurbekhan7-web/uzbekistan-auto-race`.
+
+HTTPS remote: `https://github.com/temurbekkhan7-web/uzbekistan-auto-race.git`.
+
+- [ ] Repository kirishi qayta tekshirilgach GitHub Actions debug APK buildini ishga tushirish.
+- [ ] Android o‘yin kodi va CI workflow’ini repositoryga push qilish.
+- [ ] GitHub Actions debug APK workflow’ini ishga tushirish va build natijasini tekshirish.
+- [ ] Muvaffaqiyatli debug APK artefaktini yuklab olish uchun olish.
+- [ ] Release APK workflow’ini signing uchun tayyor holatda tasdiqlash.

@@ -7,20 +7,21 @@ import { CameraController } from "../systems/CameraController";
 import { EnvironmentBuilder, type WeatherMode } from "../systems/EnvironmentBuilder";
 import { InputManager } from "../systems/InputManager";
 import { RaceManager } from "../systems/RaceManager";
-import { buildSirdaryoTrack, buildTashkentTrack, type TrackData } from "../systems/TrackBuilder";
+import { buildJizzaxTrack, buildRegionalTrack, buildSirdaryoTrack, buildTashkentTrack, type TrackData } from "../systems/TrackBuilder";
 import { AudioEngine } from "../systems/AudioEngine";
 import { HudController, type MapMarker } from "../ui/HudController";
 import { CARS, getCar } from "../data/cars";
 import { getRegion, REGIONS, type RegionConfig } from "../data/regions";
 import { loadProgress, saveProgress, type GameProgress } from "../data/progress";
 
-type RaceState = "menu" | "countdown" | "racing" | "finished";
+type RaceState = "menu" | "countdown" | "racing" | "paused" | "finished";
 export type GraphicsProfile = "HIGH" | "MEDIUM" | "LOW";
 
 export class GameWorld {
   track: TrackData;
   player!: Vehicle;
   rivals: AIRacer[] = [];
+  traffic: AIRacer[] = [];
   readonly camera: CameraController;
   private readonly environment: EnvironmentBuilder;
   private readonly input: InputManager;
@@ -59,7 +60,7 @@ export class GameWorld {
       this.progress.garage.paint = previewCar.defaultColor;
     }
     this.demo = query.has("demo"); this.fastDemo = query.has("fast"); this.resultsPreview = query.has("result");
-    this.track = this.region.id === "sirdaryo" ? buildSirdaryoTrack(scene) : buildTashkentTrack(scene);
+    this.track = this.region.id === "jizzax" ? buildJizzaxTrack(scene) : this.region.id === "sirdaryo" ? buildSirdaryoTrack(scene) : this.region.id === "tashkent" ? buildTashkentTrack(scene) : buildRegionalTrack(scene, this.region.id);
     this.environment = new EnvironmentBuilder(scene, this.track, this.region.id);
     this.camera = new CameraController(scene);
     if (query.has("cockpit")) this.camera.setMode("COCKPIT");
@@ -70,6 +71,7 @@ export class GameWorld {
       onProfile: (profile) => this.setGraphics(profile),
       onWeather: () => this.nextWeather(),
       onCamera: () => this.toggleCamera(),
+      onPause: () => this.togglePause(),
       onRestart: () => this.startRace(),
       onContinue: () => this.openNextRegion(),
       onSection: (section) => this.showSection(section),
@@ -101,16 +103,19 @@ export class GameWorld {
 
   private createRivals(): void {
     this.rivals.forEach((rival) => rival.vehicle.root.dispose(false, true));
+    this.traffic.forEach((vehicle) => vehicle.vehicle.root.dispose(false, true));
     const rivalIds = this.region.id === "sirdaryo" ? ["onix", "tracker", "malibu", "gentra"] : ["gentra", "lacetti", "onix", "malibu"];
     this.rivals = rivalIds.map((id, index) => {
       const car = getCar(id);
       return new AIRacer(this.scene, `ai-${this.region.id}-${car.id}`, car.defaultColor, car.maxSpeed * 0.74 - index * 0.9, index % 2 ? -1.65 : 1.65);
     });
+    this.traffic = [new AIRacer(this.scene, `traffic-${this.region.id}-damas`, "#E8E7DE", 22, -3.1), new AIRacer(this.scene, `traffic-${this.region.id}-service`, "#8E9B9A", 25, 3.15)];
   }
 
   private handleKey = (event: KeyboardEvent): void => {
     if (event.key === "Enter" && (this.raceState === "menu" || this.raceState === "finished")) this.startRace();
     if (event.key.toLowerCase() === "c") this.toggleCamera();
+    if (event.key.toLowerCase() === "p") this.togglePause();
   };
 
   private resetVehicles(): void {
@@ -118,11 +123,13 @@ export class GameWorld {
     const start = this.track.pointAt(startIndex, 0); const tangent = this.track.tangents[startIndex];
     this.player.reset(start, Math.atan2(tangent.x, tangent.z)); this.demoProgress = startIndex;
     this.rivals.forEach((rival, index) => rival.reset(this.track, startIndex + 3 + index * 4));
+    this.traffic.forEach((vehicle, index) => vehicle.reset(this.track, startIndex + 28 + index * 36));
     this.race.reset(this.track); this.camera.update(1, this.player, false); this.elapsed = 0;
   }
 
   startRace(): void { if (this.raceState === "countdown" || this.raceState === "racing") return; this.audio.unlock(); this.resetVehicles(); this.raceState = "countdown"; this.countdown = 3; this.warning = ""; }
   private toggleCamera(): void { const mode = this.camera.toggle(); this.warning = mode === "CHASE" ? "ORQA KAMERA" : "ICHKI KAMERA"; this.warningTimer = 1.2; }
+  private togglePause(): void { if (this.raceState === "racing") { this.raceState = "paused"; this.warning = "PAUZA"; this.warningTimer = 99; } else if (this.raceState === "paused") { this.raceState = "racing"; this.warning = ""; this.warningTimer = 0; } }
   private updateDemo(delta: number): void {
     this.demoProgress += (this.fastDemo ? 1100 : 10.2) * delta;
     const pointIndex = Math.floor(this.demoProgress) % this.track.points.length; const point = this.track.pointAt(pointIndex, 0.25 + Math.sin(this.demoProgress * 0.22) * 0.22); const tangent = this.track.tangents[pointIndex];
@@ -139,13 +146,11 @@ export class GameWorld {
     const nextIndex = Math.min(this.progress.highestUnlockedRegion, this.regionIndex + 1);
     if (nextIndex <= this.regionIndex) { this.raceState = "menu"; return; }
     const next = REGIONS[nextIndex];
-    if (next.id !== "tashkent" && next.id !== "sirdaryo") { this.raceState = "menu"; this.warning = `${next.title} OCHILDI — DRIVING XARITASI NAVBATDAGI ITERATSIYADA`; this.warningTimer = 2.5; return; }
     this.progress.selectedRegionId = next.id; saveProgress(this.progress); window.location.assign(`/?region=${next.id}`);
   }
   private selectRegion(regionId: string): void {
     const index = REGIONS.findIndex((region) => region.id === regionId);
     if (index < 0 || index > this.progress.highestUnlockedRegion) { this.warning = "AVVAL OLDINGI BOSQICHNI YUTING"; this.warningTimer = 1.8; return; }
-    if (REGIONS[index].id !== "tashkent" && REGIONS[index].id !== "sirdaryo") { this.warning = `${REGIONS[index].title} OCHILDI — DRIVING XARITASI NAVBATDAGI ITERATSIYADA`; this.warningTimer = 2.5; return; }
     this.progress.selectedRegionId = regionId; saveProgress(this.progress); window.location.assign(`/?region=${regionId}`);
   }
   private selectCar(carId: string): void { if (!CARS.some((car) => car.id === carId)) return; this.progress.garage.selectedCarId = carId; this.progress.garage.paint = getCar(carId).defaultColor; saveProgress(this.progress); this.createPlayer(); this.resetVehicles(); }
@@ -162,11 +167,12 @@ export class GameWorld {
     if (this.raceState === "countdown") { this.countdown -= safeDelta; if (this.countdown <= 0) { this.raceState = "racing"; this.countdown = 0; } }
     const racing = this.raceState === "racing"; const controls: VehicleControls = racing ? (this.demo ? { throttle: 1, brake: 0, steer: 0, nitro: true } : this.input.controls()) : { throttle: 0, brake: 0, steer: 0, nitro: false };
     if (racing) {
-      this.elapsed += safeDelta; if (this.demo) this.updateDemo(safeDelta); else this.player.update(safeDelta, controls, this.track); this.rivals.forEach((rival) => rival.update(safeDelta, this.track, true));
-      this.rivals.forEach((rival) => { if (Vector3.DistanceSquared(rival.position, this.player.root.position) < 5.4) { this.player.impact(); this.warning = "TO‘QNASHUV — TEZLIK PASAYDI"; this.warningTimer = 0.8; } });
+      this.elapsed += safeDelta; if (this.demo) this.updateDemo(safeDelta); else this.player.update(safeDelta, controls, this.track); this.rivals.forEach((rival) => rival.update(safeDelta, this.track, true)); this.traffic.forEach((vehicle) => vehicle.update(safeDelta, this.track, false));
+      this.rivals.forEach((rival) => { if (Vector3.DistanceSquared(rival.position, this.player.root.position) < 5.4) { this.player.impact(); this.audio.collision(); this.warning = "TO‘QNASHUV — TEZLIK PASAYDI"; this.warningTimer = 0.8; } });
+      this.traffic.forEach((vehicle) => { if (Vector3.DistanceSquared(vehicle.position, this.player.root.position) < 5.4) { this.player.impact(); this.audio.collision(); this.warning = "TRAFFIC TO‘QNASHUVI — TEZLIK PASAYDI"; this.warningTimer = 0.8; } });
       if (this.race.update(this.player, this.rivals, this.track)) this.finishRace();
     }
-    this.camera.update(safeDelta, this.player, controls.nitro && controls.throttle > 0.3); this.audio.update(this.player.speed, controls.nitro);
+    this.player.setHeadlights(this.environment.currentWeather === "TUN" || this.environment.currentWeather === "YOMG‘IR"); this.camera.update(safeDelta, this.player, controls.nitro && controls.throttle > 0.3); this.audio.update(this.player.speed, controls.nitro, this.player.braking, this.player.drifting, this.player.offRoad);
     this.hud.update({ speed: this.player.speedKph, nitro: this.player.nitroPercent, lap: this.race.lap, totalLaps: this.race.totalLaps, position: this.race.position, countdown: this.raceState === "countdown" ? this.countdown : null, weather: this.environment.currentWeather, raceState: this.raceState, graphics: this.graphics, elapsed: this.elapsed, cameraMode: this.camera.currentMode, drifting: this.player.drifting, playerMap: this.mapPoint(this.player.root.position), rivalsMap: this.rivals.map((rival) => this.mapPoint(rival.position)), highestUnlockedRegion: this.progress.highestUnlockedRegion, selectedRegion: this.region, garage: this.progress.garage, warning: this.warning });
   }
   dispose(): void { window.removeEventListener("keydown", this.handleKey); this.input.dispose(); this.hud.dispose(); this.audio.dispose(); }

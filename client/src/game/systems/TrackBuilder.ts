@@ -199,3 +199,81 @@ export function buildSirdaryoTrack(scene: Scene): TrackData {
   }
   return track;
 }
+
+function buildJizzaxLoopPoints(): Vector3[] {
+  const points: Vector3[] = [];
+  const count = 132;
+  for (let index = 0; index < count; index += 1) {
+    const theta = (index / count) * Math.PI * 2;
+    const radiusX = 70 + Math.sin(theta * 4) * 12;
+    const radiusZ = 54 + Math.cos(theta * 3) * 9;
+    const x = Math.cos(theta) * radiusX + Math.sin(theta * 2) * 17;
+    const z = Math.sin(theta) * radiusZ;
+    points.push(new Vector3(x, 0.06, z));
+  }
+  return points;
+}
+
+export function buildJizzaxTrack(scene: Scene): TrackData {
+  const track = new TrackData(buildJizzaxLoopPoints(), 9.2);
+  const roadMaterial = new StandardMaterial("jizzax-road-material", scene);
+  const roadTexture = new Texture(ASSETS.asphalt, scene);
+  roadTexture.uScale = 23;
+  roadTexture.vScale = 2.4;
+  roadMaterial.diffuseTexture = roadTexture;
+  roadMaterial.diffuseColor = new Color3(0.13, 0.14, 0.13);
+  roadMaterial.specularColor = new Color3(0.04, 0.04, 0.04);
+  const shoulderMaterial = new StandardMaterial("jizzax-shoulder-material", scene);
+  shoulderMaterial.diffuseColor = new Color3(0.33, 0.24, 0.14);
+  const markerMaterial = new StandardMaterial("jizzax-marker-material", scene);
+  markerMaterial.diffuseColor = new Color3(0.78, 0.7, 0.48);
+  const railMaterial = new StandardMaterial("jizzax-rail-material", scene);
+  railMaterial.diffuseColor = new Color3(0.48, 0.51, 0.48);
+  for (let index = 0; index < track.points.length; index += 1) {
+    const current = track.points[index]; const next = track.points[(index + 1) % track.points.length]; const midpoint = current.add(next).scale(0.5); const length = Vector3.Distance(current, next) + 0.6; const tangent = next.subtract(current).normalize();
+    const shoulder = MeshBuilder.CreateBox(`jizzax-shoulder-${index}`, { width: track.width + 1.7, height: 0.05, depth: length + 0.18 }, scene); shoulder.position = new Vector3(midpoint.x, 0.03, midpoint.z); shoulder.rotation.y = Math.atan2(tangent.x, tangent.z); shoulder.material = shoulderMaterial;
+    const road = MeshBuilder.CreateBox(`jizzax-road-${index}`, { width: track.width, height: 0.1, depth: length }, scene); road.position = new Vector3(midpoint.x, 0.1, midpoint.z); road.rotation.y = Math.atan2(tangent.x, tangent.z); road.material = roadMaterial;
+  }
+  for (let index = 0; index < track.points.length; index += 4) {
+    const marker = MeshBuilder.CreateBox(`jizzax-marker-${index}`, { width: 0.24, height: 0.03, depth: 2.05 }, scene); marker.position = track.points[index].add(new Vector3(0, 0.16, 0)); marker.rotation.y = Math.atan2(track.tangents[index].x, track.tangents[index].z); marker.material = markerMaterial;
+  }
+  for (let index = 3; index < track.points.length; index += 7) {
+    const point = track.pointAt(index, index % 2 ? track.width / 2 + 1.2 : -track.width / 2 - 1.2); const rail = MeshBuilder.CreateBox(`jizzax-rail-${index}`, { width: 0.15, height: 0.58, depth: 7.5 }, scene); rail.position = point.add(new Vector3(0, 0.54, 0)); rail.rotation.y = Math.atan2(track.tangents[index].x, track.tangents[index].z); rail.material = railMaterial;
+  }
+  return track;
+}
+
+const REGIONAL_SHAPES: Record<string, { x: number; z: number; waveX: number; waveZ: number; width: number; hue: Color3 }> = {
+  samarqand: { x: 78, z: 49, waveX: 8, waveZ: 5, width: 9.4, hue: new Color3(0.16, 0.15, 0.13) },
+  buxoro: { x: 102, z: 44, waveX: 4, waveZ: 3, width: 10.6, hue: new Color3(0.15, 0.13, 0.1) },
+  navoiy: { x: 110, z: 52, waveX: 11, waveZ: 4, width: 10.4, hue: new Color3(0.13, 0.14, 0.13) },
+  qashqadaryo: { x: 72, z: 58, waveX: 13, waveZ: 9, width: 9.2, hue: new Color3(0.14, 0.15, 0.13) },
+  surxondaryo: { x: 75, z: 61, waveX: 9, waveZ: 12, width: 9.5, hue: new Color3(0.15, 0.14, 0.11) },
+  andijon: { x: 70, z: 48, waveX: 6, waveZ: 6, width: 9.1, hue: new Color3(0.14, 0.15, 0.14) },
+  namangan: { x: 74, z: 52, waveX: 7, waveZ: 8, width: 9.25, hue: new Color3(0.13, 0.15, 0.13) },
+  fargona: { x: 86, z: 55, waveX: 10, waveZ: 7, width: 9.6, hue: new Color3(0.14, 0.15, 0.14) },
+  xorazm: { x: 89, z: 46, waveX: 5, waveZ: 4, width: 10.1, hue: new Color3(0.16, 0.14, 0.11) },
+};
+
+export function buildRegionalTrack(scene: Scene, regionId: string): TrackData {
+  const shape = REGIONAL_SHAPES[regionId] ?? REGIONAL_SHAPES.samarqand;
+  const points: Vector3[] = [];
+  const count = 116;
+  for (let index = 0; index < count; index += 1) {
+    const theta = (index / count) * Math.PI * 2;
+    const x = Math.cos(theta) * (shape.x + Math.sin(theta * 3) * shape.waveX) + Math.sin(theta * 2) * shape.waveX;
+    const z = Math.sin(theta) * (shape.z + Math.cos(theta * 2) * shape.waveZ) + Math.cos(theta * 3) * shape.waveZ;
+    points.push(new Vector3(x, 0.06, z));
+  }
+  const track = new TrackData(points, shape.width);
+  const roadMaterial = new StandardMaterial(`${regionId}-road-material`, scene); const roadTexture = new Texture(ASSETS.asphalt, scene); roadTexture.uScale = 22; roadTexture.vScale = 2.3; roadMaterial.diffuseTexture = roadTexture; roadMaterial.diffuseColor = shape.hue; roadMaterial.specularColor = Color3.Black();
+  const shoulderMaterial = new StandardMaterial(`${regionId}-shoulder-material`, scene); shoulderMaterial.diffuseColor = regionId === "buxoro" || regionId === "xorazm" ? new Color3(.39,.29,.13) : new Color3(.3,.25,.15);
+  const markerMaterial = new StandardMaterial(`${regionId}-marker-material`, scene); markerMaterial.diffuseColor = new Color3(.72,.67,.49);
+  for (let index = 0; index < track.points.length; index += 1) {
+    const current = track.points[index]; const next = track.points[(index + 1) % track.points.length]; const midpoint = current.add(next).scale(.5); const length = Vector3.Distance(current, next) + .55; const tangent = next.subtract(current).normalize();
+    const shoulder = MeshBuilder.CreateBox(`${regionId}-shoulder-${index}`, { width: track.width + 1.5, height: .05, depth: length + .16 }, scene); shoulder.position = new Vector3(midpoint.x, .03, midpoint.z); shoulder.rotation.y = Math.atan2(tangent.x, tangent.z); shoulder.material = shoulderMaterial;
+    const road = MeshBuilder.CreateBox(`${regionId}-road-${index}`, { width: track.width, height: .1, depth: length }, scene); road.position = new Vector3(midpoint.x, .1, midpoint.z); road.rotation.y = Math.atan2(tangent.x, tangent.z); road.material = roadMaterial;
+  }
+  for (let index = 0; index < track.points.length; index += 4) { const marker = MeshBuilder.CreateBox(`${regionId}-marker-${index}`, { width:.23, height:.03, depth:2.1 }, scene); marker.position = track.points[index].add(new Vector3(0,.16,0)); marker.rotation.y = Math.atan2(track.tangents[index].x, track.tangents[index].z); marker.material = markerMaterial; }
+  return track;
+}

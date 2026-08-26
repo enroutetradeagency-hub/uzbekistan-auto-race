@@ -29,16 +29,17 @@ export class EnvironmentBuilder {
     this.sun.intensity = 1.18;
 
     const isSirdaryo = regionId === "sirdaryo";
-    const ground = MeshBuilder.CreateGround(`${regionId}-ground`, { width: isSirdaryo ? 390 : 260, height: isSirdaryo ? 290 : 220, subdivisions: 2 }, scene);
+    const isJizzax = regionId === "jizzax";
+    const ground = MeshBuilder.CreateGround(`${regionId}-ground`, { width: isSirdaryo ? 390 : isJizzax ? 310 : 260, height: isSirdaryo ? 290 : isJizzax ? 270 : 220, subdivisions: 2 }, scene);
     const groundMaterial = new StandardMaterial("steppe-material", scene);
     const steppeTexture = new Texture(ASSETS.steppe, scene);
-    steppeTexture.uScale = isSirdaryo ? 28 : 16;
-    steppeTexture.vScale = isSirdaryo ? 22 : 14;
+    steppeTexture.uScale = isSirdaryo ? 28 : isJizzax ? 22 : 16;
+    steppeTexture.vScale = isSirdaryo ? 22 : isJizzax ? 20 : 14;
     groundMaterial.diffuseTexture = steppeTexture;
     groundMaterial.specularColor = Color3.Black();
     ground.material = groundMaterial;
 
-    if (!isSirdaryo) {
+    if (regionId === "tashkent") {
       const backdrop = MeshBuilder.CreatePlane("tashkent-foothills", { width: 520, height: 105 }, scene);
       backdrop.position = new Vector3(0, 42, 210);
       backdrop.rotation.y = Math.PI;
@@ -56,8 +57,65 @@ export class EnvironmentBuilder {
     this.skyMaterial.emissiveColor = new Color3(0.065, 0.14, 0.18);
     this.skyMaterial.specularColor = Color3.Black();
     sky.material = this.skyMaterial;
-    if (isSirdaryo) this.addSirdaryoProps(track); else this.addRoadsideProps(track);
+    if (isSirdaryo) this.addSirdaryoProps(track); else if (isJizzax) this.addJizzaxProps(track); else if (regionId === "tashkent") this.addRoadsideProps(track); else this.addRegionalProps(track);
     this.setWeather("KUN");
+  }
+
+  private addRegionalProps(track: TrackData): void {
+    const desert = ["buxoro", "navoiy"].includes(this.regionId);
+    const historic = ["samarqand", "xorazm"].includes(this.regionId);
+    const valley = ["andijon", "namangan", "fargona", "surxondaryo"].includes(this.regionId);
+    const trunkMaterial = new StandardMaterial(`${this.regionId}-trunk`, this.scene); trunkMaterial.diffuseColor = new Color3(.24,.16,.09);
+    const leafMaterial = new StandardMaterial(`${this.regionId}-leaf`, this.scene); leafMaterial.diffuseColor = valley ? new Color3(.08,.33,.13) : new Color3(.18,.28,.12);
+    const wallMaterial = new StandardMaterial(`${this.regionId}-wall`, this.scene); wallMaterial.diffuseColor = historic ? new Color3(.67,.49,.28) : desert ? new Color3(.61,.47,.27) : new Color3(.64,.58,.46);
+    const roofMaterial = new StandardMaterial(`${this.regionId}-roof`, this.scene); roofMaterial.diffuseColor = historic ? new Color3(.14,.34,.39) : new Color3(.36,.17,.08);
+    const terrainMaterial = new StandardMaterial(`${this.regionId}-terrain`, this.scene); terrainMaterial.diffuseColor = desert ? new Color3(.45,.34,.16) : new Color3(.28,.28,.17);
+    const blueMaterial = new StandardMaterial(`${this.regionId}-sign`, this.scene); blueMaterial.diffuseColor = new Color3(.03,.22,.5);
+    for (let index = 5; index < track.points.length; index += valley ? 4 : 7) {
+      const side = index % 2 ? 1 : -1; const point = track.pointAt(index, side * (track.width / 2 + 9 + (index % 3) * 2));
+      if (desert) {
+        const dune = MeshBuilder.CreateSphere(`${this.regionId}-dune-${index}`, { diameterX: 13, diameterY: 3.5, diameterZ: 9, segments: 10 }, this.scene); dune.position = point.add(new Vector3(0, .8, 0)); dune.material = terrainMaterial;
+      } else {
+        const trunk = MeshBuilder.CreateCylinder(`${this.regionId}-tree-trunk-${index}`, { height: 5.2, diameter:.25, tessellation:6 }, this.scene); trunk.position = point.add(new Vector3(0,2.6,0)); trunk.material = trunkMaterial;
+        const foliage = MeshBuilder.CreateSphere(`${this.regionId}-tree-leaf-${index}`, { diameterX: valley ? 3.1 : 2, diameterY: valley ? 3 : 5.1, diameterZ: valley ? 3 : 2, segments:8 }, this.scene); foliage.position = point.add(new Vector3(0, valley ? 4.8 : 5.7, 0)); foliage.material = leafMaterial;
+      }
+    }
+    [16, 48, 79].forEach((trackIndex, houseIndex) => {
+      const point = track.pointAt(trackIndex, houseIndex % 2 ? 19 : -19); const home = MeshBuilder.CreateBox(`${this.regionId}-home-${houseIndex}`, { width:8, height:historic ? 4.1 : 3.2, depth:6.3 }, this.scene); home.position = point.add(new Vector3(0, historic ? 2.05 : 1.6, 0)); home.material = wallMaterial;
+      const roof = historic ? MeshBuilder.CreateSphere(`${this.regionId}-dome-${houseIndex}`, { diameter:4.7, segments:12 }, this.scene) : MeshBuilder.CreateBox(`${this.regionId}-roof-${houseIndex}`, { width:8.6, height:.35, depth:6.9 }, this.scene); roof.position = point.add(new Vector3(0, historic ? 4.45 : 3.4, 0)); roof.material = roofMaterial;
+    });
+    if (historic) [28, 58].forEach((trackIndex, towerIndex) => { const point = track.pointAt(trackIndex, towerIndex ? -24 : 24); const tower = MeshBuilder.CreateCylinder(`${this.regionId}-tower-${towerIndex}`, { height:12, diameter:2.4, tessellation:10 }, this.scene); tower.position = point.add(new Vector3(0,6,0)); tower.material = wallMaterial; });
+    if (!desert && !historic && !valley) [[-120,40],[105,-60]].forEach(([x,z], index) => { const hill = MeshBuilder.CreateSphere(`${this.regionId}-hill-${index}`, { diameterX:54, diameterY:23, diameterZ:42, segments:12 }, this.scene); hill.position = new Vector3(x,5,z); hill.material = terrainMaterial; });
+    [24, 65, 100].forEach((trackIndex) => { const point = track.pointAt(trackIndex, track.width / 2 + 2.4); const post = MeshBuilder.CreateCylinder(`${this.regionId}-sign-post-${trackIndex}`, { height:2.6, diameter:.1, tessellation:6 }, this.scene); post.position = point.add(new Vector3(0,1.3,0)); post.material = blueMaterial; const sign = MeshBuilder.CreateBox(`${this.regionId}-sign-${trackIndex}`, { width:2.8, height:1.1, depth:.1 }, this.scene); sign.position = point.add(new Vector3(0,2.35,0)); sign.rotation.y = Math.atan2(track.tangents[trackIndex].x, track.tangents[trackIndex].z); sign.material = blueMaterial; });
+  }
+
+  private addJizzaxProps(track: TrackData): void {
+    const rockMaterial = new StandardMaterial("jizzax-rock", this.scene); rockMaterial.diffuseColor = new Color3(0.32, 0.27, 0.2); rockMaterial.specularColor = Color3.Black();
+    const slopeMaterial = new StandardMaterial("jizzax-slope", this.scene); slopeMaterial.diffuseColor = new Color3(0.42, 0.35, 0.2); slopeMaterial.specularColor = Color3.Black();
+    const trunkMaterial = new StandardMaterial("jizzax-trunk", this.scene); trunkMaterial.diffuseColor = new Color3(0.22, 0.15, 0.08);
+    const leafMaterial = new StandardMaterial("jizzax-leaf", this.scene); leafMaterial.diffuseColor = new Color3(0.12, 0.3, 0.12);
+    const wallMaterial = new StandardMaterial("jizzax-wall", this.scene); wallMaterial.diffuseColor = new Color3(0.63, 0.57, 0.46);
+    const roofMaterial = new StandardMaterial("jizzax-roof", this.scene); roofMaterial.diffuseColor = new Color3(0.32, 0.15, 0.08);
+    const signMaterial = new StandardMaterial("jizzax-sign", this.scene); signMaterial.diffuseColor = new Color3(0.04, 0.24, 0.52);
+    [[-144, 75, 34], [-118, -108, 29], [132, 92, 36], [148, -85, 32], [10, 148, 26]].forEach(([x, z, height], index) => {
+      const base = MeshBuilder.CreateSphere(`jizzax-mountain-base-${index}`, { diameterX: 58 + index * 5, diameterY: height * 1.45, diameterZ: 46 + index * 4, segments: 14 }, this.scene);
+      base.position = new Vector3(x, height * .24 - 2, z); base.material = index % 2 ? slopeMaterial : rockMaterial;
+      const cap = MeshBuilder.CreateSphere(`jizzax-mountain-cap-${index}`, { diameterX: 30 + index * 3, diameterY: height * .75, diameterZ: 24 + index * 2, segments: 12 }, this.scene);
+      cap.position = new Vector3(x + 7, height * .72 - 2, z - 4); cap.material = rockMaterial;
+    });
+    for (let index = 5; index < track.points.length; index += 5) {
+      const side = index % 2 ? 1 : -1; const point = track.pointAt(index, side * (track.width / 2 + 8 + (index % 3) * 1.8));
+      const trunk = MeshBuilder.CreateCylinder(`jizzax-tree-trunk-${index}`, { height: 4.8, diameter: 0.28, tessellation: 6 }, this.scene); trunk.position = point.add(new Vector3(0, 2.4, 0)); trunk.material = trunkMaterial;
+      const foliage = MeshBuilder.CreateSphere(`jizzax-tree-leaf-${index}`, { diameterX: 2.1, diameterY: 4.4, diameterZ: 2, segments: 8 }, this.scene); foliage.position = point.add(new Vector3(0, 5, 0)); foliage.material = leafMaterial;
+    }
+    [11, 46, 82, 115].forEach((trackIndex, houseIndex) => {
+      const point = track.pointAt(trackIndex, houseIndex % 2 ? 18 : -18); const home = MeshBuilder.CreateBox(`jizzax-home-${houseIndex}`, { width: 7.5, height: 3.3, depth: 6.4 }, this.scene); home.position = point.add(new Vector3(0, 1.65, 0)); home.material = wallMaterial;
+      const roof = MeshBuilder.CreateBox(`jizzax-roof-${houseIndex}`, { width: 8.1, height: .35, depth: 7 }, this.scene); roof.position = point.add(new Vector3(0, 3.45, 0)); roof.material = roofMaterial;
+    });
+    [23, 67, 105].forEach((trackIndex) => {
+      const point = track.pointAt(trackIndex, track.width / 2 + 2.4); const post = MeshBuilder.CreateCylinder(`jizzax-sign-post-${trackIndex}`, { height: 2.7, diameter: .1, tessellation: 6 }, this.scene); post.position = point.add(new Vector3(0, 1.35, 0)); post.material = signMaterial;
+      const sign = MeshBuilder.CreateBox(`jizzax-sign-${trackIndex}`, { width: 2.8, height: 1.1, depth: .1 }, this.scene); sign.position = point.add(new Vector3(0, 2.38, 0)); sign.rotation.y = Math.atan2(track.tangents[trackIndex].x, track.tangents[trackIndex].z); sign.material = signMaterial;
+    });
   }
 
   private addSirdaryoProps(track: TrackData): void {

@@ -4,6 +4,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import type { Scene } from "@babylonjs/core/scene";
 import type { TrackData } from "../systems/TrackBuilder";
 import type { CarBodyStyle } from "../data/cars";
@@ -28,6 +29,7 @@ export class Vehicle {
   private readonly handling: number;
   private impactTimer = 0;
   private readonly brakeMaterials: StandardMaterial[] = [];
+  private readonly headlights: PointLight[] = [];
   private readonly cabin: Mesh;
 
   constructor(scene: Scene, name: string, color: string, options?: { maxSpeed?: number; acceleration?: number; handling?: number; bodyStyle?: CarBodyStyle; nitroCapacity?: number; modelId?: string }) {
@@ -57,6 +59,7 @@ export class Vehicle {
     [-0.62, 0.62].forEach((x, side) => {
       const lightOffset = Math.min(dimensions.width * 0.33, 0.62);
       const headlight = MeshBuilder.CreateBox(`${name}-headlight-${side}`, { width: 0.42, height: 0.13, depth: 0.08 }, scene); headlight.parent = this.root; headlight.position = new Vector3(side === 0 ? -lightOffset : lightOffset, 0.83, dimensions.depth / 2 + 0.06); headlight.material = lightMaterial;
+      const lamp = new PointLight(`${name}-beam-${side}`, new Vector3(side === 0 ? -lightOffset : lightOffset, 1.02, dimensions.depth / 2 + .38), scene); lamp.parent = this.root; lamp.diffuse = new Color3(1, .82, .48); lamp.intensity = 0; lamp.range = 16; this.headlights.push(lamp);
       const brakeMaterial = new StandardMaterial(`${name}-brakes-${side}`, scene); brakeMaterial.diffuseColor = new Color3(0.55, 0.03, 0.02); brakeMaterial.emissiveColor = new Color3(0.16, 0, 0); this.brakeMaterials.push(brakeMaterial);
       const brake = MeshBuilder.CreateBox(`${name}-brake-${side}`, { width: 0.42, height: 0.13, depth: 0.08 }, scene); brake.parent = this.root; brake.position = new Vector3(side === 0 ? -lightOffset : lightOffset, 0.83, -dimensions.depth / 2 - 0.06); brake.material = brakeMaterial;
     });
@@ -116,5 +119,6 @@ export class Vehicle {
   get nitroPercent(): number { return (this.nitro / this.nitroCapacity) * 100; }
   get drifting(): boolean { return Math.abs(this.drift) > 0.18 && Math.abs(this.speed) > 16; }
   setCockpitView(enabled: boolean): void { this.cabin.isVisible = !enabled; }
+  setHeadlights(enabled: boolean): void { this.headlights.forEach((lamp) => { lamp.intensity = enabled ? 1.35 : 0; }); }
   impact(): void { if (this.impactTimer > 0) return; this.impactTimer = 0.38; this.speed *= 0.52; this.nitro = Math.max(0, this.nitro - 14); this.collisionFlash = 0.38; }
 }
