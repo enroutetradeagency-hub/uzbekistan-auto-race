@@ -85,3 +85,21 @@ Yangi HTTPS remote: `https://github.com/enroutetradeagency-hub/uzbekistan-auto-r
 - [x] Quyosh/ambient lighting, soyalar, atrof-muhit akslari, tuman, yomg‘ir, chang va tezlik post-effektlarini integratsiya qilish.
 - [x] High/Medium/Low rejimlarda rendering sifatini va FPS yuklamasini moslashtirish.
 - [x] Yangilangan grafikani Android landscape’da tekshirib, GitHub Actions orqali yangi debug APK yaratish.
+
+## Realistik native 3D qayta qurish auditi
+
+- [ ] Babylon.js primitive geometriyasi va WebView render yo‘lining realistik mobil racing uchun cheklovlarini o‘lchash.
+- [ ] Unity URP va Unreal Mobile rendererini Android GPU, PBR, reflection va asset pipeline mezonlari bo‘yicha baholash.
+- [ ] Haqiqiy avtomobil GLB/FBX modellari, skanerlangan PBR asfalt va vegetation assetlari uchun litsenziyali import pipeline’ini aniqlash.
+- [ ] Tanlangan engine’da high/medium/low qurilma profillari, baked lighting, reflection probe va LOD arxitekturasini belgilash.
+- [ ] O‘tish bosqichida Toshkent, Sirdaryo, Jizzax gameplay ma’lumotlari va Android CI APK build oqimini saqlash rejasini yaratish.
+
+## Unity 6 + URP native loyiha tayyorgarligi
+
+- [ ] Unity 6 LTS URP papka tuzilmasi, assembly definitionlari va scene-loading oqimini rasmiylashtirish.
+- [ ] Bootstrap, Main Menu, Garage, Toshkent, Sirdaryo, Jizzax hamda shared lighting sahnalari uchun native scene kontraktini yozish.
+- [ ] C# driving, touch input, race state, AI, progress va garage tizimlari uchun Babylon’dan mustaqil data modeli va modul chegaralarini aniqlash.
+- [ ] Android Vulkan/GLES fallback, IL2CPP, ARM64, target API, texture compression hamda quality tier sozlamalarini tayyorlash.
+- [ ] Litsenziyali vehicle, road, environment, vegetation, decal va VFX assetlarining format, LOD, texture va huquq manifestini tayyorlash.
+- [ ] Unity Android batch build, signed release secretlari va GitHub Actions build runner talablarini qayta loyihalash.
+- [ ] Unity loyiha papkasi ulangach birinchi native Toshkent vertical-slice importi va qurilmadagi FPS/profiling sinovini bajarish.
