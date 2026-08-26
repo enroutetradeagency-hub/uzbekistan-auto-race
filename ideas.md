@@ -74,3 +74,7 @@ Wordmark “UZBEKISTAN AUTO RACE” nomini keng, qiya va kesilgan terminali bor 
 Har bir asosiy ekran **yo‘l-koridor signali**ni ko‘rsatadi: start menyusida poyga kadri va viloyat yo‘nalishi, poygada esa asfalt trassasi, ufq, telemetriya va markaziy tezlik indikatorlari mavjud bo‘ladi. Atlas Zarg‘aldoq faqat poyga harakati va muhim statuslar — nitro, faol grafik tanlovi, bosqich, start CTA va asosiy telemetriya — uchun ishlatiladi. Matn ohangi qisqa o‘zbekcha poyga-buyruqlari bilan cheklanadi; u umumiy landing-page iboralarini qabul qilmaydi.
 
 Toshkent sahnasi mahalliy kinematik belgilarni saqlaydi: tog‘oldi ufqi, poplar qatori, mahalla uylari, svetofor va ko‘rsatgichlar, quruq steppe zamin hamda gardishli asfalt yo‘l. Barlow Condensed buyruq va tezlik holatlarini boshqaradi, Manrope esa yordamchi telemetriya va kontekst uchun ishlatiladi.
+
+Gameplay mobilga soddalashtirilgan bo‘lsa-da, uning asosiy taassuroti yorqin low-poly arkada emas, balki iliq asfalt, changli yoqa, poplar va mahalla siluetlari orqali berilgan **kinematik o‘zbek yo‘li** bo‘ladi. Yo‘l-koridor doimo ochiq qoladi; markazdan o‘tuvchi ogohlantirishlar faqat qisqa yo‘l-belgisi holatlarida ishlatiladi, doimiy telemetriya esa ekran chetlariga joylashadi.
+
+Road-centerline va O‘zbekiston konturining kesishmasi UZBEKISTAN AUTO RACE uchun takrorlanuvchi asosiy ikonadir. Bu belgi header, HUD, garaj telemetriyasi va bosqich selektorida izchil qo‘llanadi; Atlas Zarg‘aldoq esa faqat faol holatlar, marshrut va poyga signali uchun saqlanadi.

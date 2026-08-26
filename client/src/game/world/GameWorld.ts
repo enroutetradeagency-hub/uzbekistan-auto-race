@@ -7,24 +7,29 @@ import { CameraController } from "../systems/CameraController";
 import { EnvironmentBuilder, type WeatherMode } from "../systems/EnvironmentBuilder";
 import { InputManager } from "../systems/InputManager";
 import { RaceManager } from "../systems/RaceManager";
-import { buildTashkentTrack, type TrackData } from "../systems/TrackBuilder";
+import { buildSirdaryoTrack, buildTashkentTrack, type TrackData } from "../systems/TrackBuilder";
 import { AudioEngine } from "../systems/AudioEngine";
 import { HudController, type MapMarker } from "../ui/HudController";
+import { CARS, getCar } from "../data/cars";
+import { getRegion, REGIONS, type RegionConfig } from "../data/regions";
+import { loadProgress, saveProgress, type GameProgress } from "../data/progress";
 
 type RaceState = "menu" | "countdown" | "racing" | "finished";
 export type GraphicsProfile = "HIGH" | "MEDIUM" | "LOW";
-const PROGRESS_KEY = "uzbekistan-auto-race-progress";
 
 export class GameWorld {
-  readonly track: TrackData;
-  readonly player: Vehicle;
-  readonly rivals: AIRacer[];
+  track: TrackData;
+  player!: Vehicle;
+  rivals: AIRacer[] = [];
   readonly camera: CameraController;
   private readonly environment: EnvironmentBuilder;
   private readonly input: InputManager;
   private readonly race: RaceManager;
   private readonly hud: HudController;
   private readonly audio: AudioEngine;
+  private readonly progress: GameProgress;
+  private readonly region: RegionConfig;
+  private readonly regionIndex: number;
   private raceState: RaceState = "menu";
   private graphics: GraphicsProfile = "MEDIUM";
   private countdown = 0;
@@ -34,39 +39,89 @@ export class GameWorld {
   private readonly demo: boolean;
   private readonly fastDemo: boolean;
   private readonly resultsPreview: boolean;
-  private demoProgress = 90;
-  private sirdaryoUnlocked = false;
+  private readonly preview: boolean;
+  private demoProgress = 0;
 
   constructor(private readonly scene: Scene, private readonly engine: Engine, private readonly canvas: HTMLCanvasElement) {
     const query = new URLSearchParams(window.location.search);
-    this.demo = query.has("demo");
-    this.fastDemo = query.has("fast");
-    this.resultsPreview = query.has("result");
-    this.sirdaryoUnlocked = localStorage.getItem(PROGRESS_KEY) === "sirdaryo";
-    this.track = buildTashkentTrack(scene); this.environment = new EnvironmentBuilder(scene, this.track);
-    this.player = new Vehicle(scene, "cobalt-player", "#F0F0EB", { maxSpeed: 58, acceleration: 19, handling: 1.05 });
-    this.rivals = [new AIRacer(scene, "ai-gentra", "#3E566B", 43, 1.8), new AIRacer(scene, "ai-lacetti", "#A9A69D", 41.5, -1.7), new AIRacer(scene, "ai-onix", "#B63731", 40.2, 0.9), new AIRacer(scene, "ai-malibu", "#1E232B", 38.5, -0.9)];
+    this.progress = loadProgress();
+    const requestedRegion = query.get("region") ?? this.progress.selectedRegionId;
+    const candidate = getRegion(requestedRegion);
+    const candidateIndex = REGIONS.findIndex((region) => region.id === candidate.id);
+    this.preview = query.has("preview");
+    this.regionIndex = candidateIndex <= this.progress.highestUnlockedRegion || this.preview ? candidateIndex : 0;
+    this.region = REGIONS[this.regionIndex];
+    if (!this.preview) { this.progress.selectedRegionId = this.region.id; saveProgress(this.progress); }
+    const previewCarId = query.get("car");
+    if (this.preview && previewCarId && CARS.some((car) => car.id === previewCarId)) {
+      const previewCar = getCar(previewCarId);
+      this.progress.garage.selectedCarId = previewCar.id;
+      this.progress.garage.paint = previewCar.defaultColor;
+    }
+    this.demo = query.has("demo"); this.fastDemo = query.has("fast"); this.resultsPreview = query.has("result");
+    this.track = this.region.id === "sirdaryo" ? buildSirdaryoTrack(scene) : buildTashkentTrack(scene);
+    this.environment = new EnvironmentBuilder(scene, this.track, this.region.id);
     this.camera = new CameraController(scene);
     if (query.has("cockpit")) this.camera.setMode("COCKPIT");
-    this.hud = new HudController({ onStart: () => this.startRace(), onProfile: (profile) => this.setGraphics(profile), onWeather: () => this.nextWeather(), onCamera: () => this.toggleCamera(), onRestart: () => this.startRace(), onContinue: () => this.openSirdaryo() });
+    this.createPlayer();
+    this.createRivals();
+    this.hud = new HudController({
+      onStart: () => this.startRace(),
+      onProfile: (profile) => this.setGraphics(profile),
+      onWeather: () => this.nextWeather(),
+      onCamera: () => this.toggleCamera(),
+      onRestart: () => this.startRace(),
+      onContinue: () => this.openNextRegion(),
+      onSection: (section) => this.showSection(section),
+      onSelectRegion: (regionId) => this.selectRegion(regionId),
+      onSelectCar: (carId) => this.selectCar(carId),
+      onPaint: (paint) => this.setPaint(paint),
+      onUpgrade: (kind) => this.upgrade(kind),
+    });
     const uiRoot = document.querySelector<HTMLElement>("#game-ui"); if (!uiRoot) throw new Error("Game UI root was not initialized");
     this.input = new InputManager(uiRoot); this.race = new RaceManager(); this.audio = new AudioEngine(); this.resetVehicles(); this.setGraphics("MEDIUM", false); window.addEventListener("keydown", this.handleKey);
+    const requestedSection = query.get("section"); if (requestedSection === "garage" || requestedSection === "regions" || requestedSection === "settings") this.hud.openSection(requestedSection);
     if (this.demo) window.setTimeout(() => this.startRace(), 550);
     if (this.resultsPreview) window.setTimeout(() => this.finishRace(), 240);
+  }
+
+  private createPlayer(): void {
+    this.player?.root.dispose(false, true);
+    const car = getCar(this.progress.garage.selectedCarId);
+    const { engineLevel, handlingLevel, nitroLevel, paint } = this.progress.garage;
+    this.player = new Vehicle(this.scene, `player-${car.id}`, paint, {
+      maxSpeed: car.maxSpeed + engineLevel * 2.3,
+      acceleration: car.acceleration + engineLevel * 1.8,
+      handling: car.handling + handlingLevel * 0.07,
+      nitroCapacity: 100 + nitroLevel * 24,
+      bodyStyle: car.bodyStyle,
+      modelId: car.id,
+    });
+  }
+
+  private createRivals(): void {
+    this.rivals.forEach((rival) => rival.vehicle.root.dispose(false, true));
+    const rivalIds = this.region.id === "sirdaryo" ? ["onix", "tracker", "malibu", "gentra"] : ["gentra", "lacetti", "onix", "malibu"];
+    this.rivals = rivalIds.map((id, index) => {
+      const car = getCar(id);
+      return new AIRacer(this.scene, `ai-${this.region.id}-${car.id}`, car.defaultColor, car.maxSpeed * 0.74 - index * 0.9, index % 2 ? -1.65 : 1.65);
+    });
   }
 
   private handleKey = (event: KeyboardEvent): void => {
     if (event.key === "Enter" && (this.raceState === "menu" || this.raceState === "finished")) this.startRace();
     if (event.key.toLowerCase() === "c") this.toggleCamera();
   };
+
   private resetVehicles(): void {
-    const startIndex = 90; const start = this.track.pointAt(startIndex, 0); const tangent = this.track.tangents[startIndex];
-    this.player.reset(start, Math.atan2(tangent.x, tangent.z)); this.demoProgress = startIndex; this.rivals.forEach((rival, index) => rival.reset(this.track, startIndex + 3 + index * 4)); this.race.reset(this.track); this.camera.update(1, this.player, false); this.elapsed = 0;
+    const startIndex = this.region.startIndex % this.track.points.length;
+    const start = this.track.pointAt(startIndex, 0); const tangent = this.track.tangents[startIndex];
+    this.player.reset(start, Math.atan2(tangent.x, tangent.z)); this.demoProgress = startIndex;
+    this.rivals.forEach((rival, index) => rival.reset(this.track, startIndex + 3 + index * 4));
+    this.race.reset(this.track); this.camera.update(1, this.player, false); this.elapsed = 0;
   }
-  startRace(): void {
-    if (this.raceState === "countdown" || this.raceState === "racing") return;
-    this.audio.unlock(); this.resetVehicles(); this.raceState = "countdown"; this.countdown = 3; this.warning = "";
-  }
+
+  startRace(): void { if (this.raceState === "countdown" || this.raceState === "racing") return; this.audio.unlock(); this.resetVehicles(); this.raceState = "countdown"; this.countdown = 3; this.warning = ""; }
   private toggleCamera(): void { const mode = this.camera.toggle(); this.warning = mode === "CHASE" ? "ORQA KAMERA" : "ICHKI KAMERA"; this.warningTimer = 1.2; }
   private updateDemo(delta: number): void {
     this.demoProgress += (this.fastDemo ? 1100 : 10.2) * delta;
@@ -75,9 +130,32 @@ export class GameWorld {
   }
   private nextWeather(): void { const current = this.environment.nextWeather(); this.warning = current === "YOMG‘IR" ? "YO‘L NAM: BURILISHDA EHTIYOT BO‘L." : `${current} REJIMI FAOL`; this.warningTimer = 2.4; }
   private setGraphics(profile: GraphicsProfile, announce = true): void { this.graphics = profile; const hardwareScale: Record<GraphicsProfile, number> = { HIGH: 1, MEDIUM: 1.2, LOW: 1.55 }; this.engine.setHardwareScalingLevel(hardwareScale[profile]); this.canvas.dataset.graphics = profile; if (announce) { this.warning = `${profile} GRAFIKA REJIMI`; this.warningTimer = 1.4; } }
-  private openSirdaryo(): void { this.sirdaryoUnlocked = true; localStorage.setItem(PROGRESS_KEY, "sirdaryo"); this.raceState = "menu"; this.warning = "SIRDARYO OCHILDI — KEYINGI XARITA NAVBATDA"; this.warningTimer = 2.6; }
-  private finishRace(): void { this.raceState = "finished"; this.sirdaryoUnlocked = true; localStorage.setItem(PROGRESS_KEY, "sirdaryo"); }
-  private mapPoint(position: Vector3): MapMarker { return { x: Math.max(8, Math.min(92, 50 + position.x * 0.62)), y: Math.max(10, Math.min(90, 50 - position.z * 0.86)) }; }
+  private finishRace(): void {
+    this.raceState = "finished";
+    this.progress.highestUnlockedRegion = Math.max(this.progress.highestUnlockedRegion, Math.min(REGIONS.length - 1, this.regionIndex + 1));
+    if (!this.preview) saveProgress(this.progress);
+  }
+  private openNextRegion(): void {
+    const nextIndex = Math.min(this.progress.highestUnlockedRegion, this.regionIndex + 1);
+    if (nextIndex <= this.regionIndex) { this.raceState = "menu"; return; }
+    const next = REGIONS[nextIndex];
+    if (next.id !== "tashkent" && next.id !== "sirdaryo") { this.raceState = "menu"; this.warning = `${next.title} OCHILDI — DRIVING XARITASI NAVBATDAGI ITERATSIYADA`; this.warningTimer = 2.5; return; }
+    this.progress.selectedRegionId = next.id; saveProgress(this.progress); window.location.assign(`/?region=${next.id}`);
+  }
+  private selectRegion(regionId: string): void {
+    const index = REGIONS.findIndex((region) => region.id === regionId);
+    if (index < 0 || index > this.progress.highestUnlockedRegion) { this.warning = "AVVAL OLDINGI BOSQICHNI YUTING"; this.warningTimer = 1.8; return; }
+    if (REGIONS[index].id !== "tashkent" && REGIONS[index].id !== "sirdaryo") { this.warning = `${REGIONS[index].title} OCHILDI — DRIVING XARITASI NAVBATDAGI ITERATSIYADA`; this.warningTimer = 2.5; return; }
+    this.progress.selectedRegionId = regionId; saveProgress(this.progress); window.location.assign(`/?region=${regionId}`);
+  }
+  private selectCar(carId: string): void { if (!CARS.some((car) => car.id === carId)) return; this.progress.garage.selectedCarId = carId; this.progress.garage.paint = getCar(carId).defaultColor; saveProgress(this.progress); this.createPlayer(); this.resetVehicles(); }
+  private setPaint(paint: string): void { this.progress.garage.paint = paint; saveProgress(this.progress); this.createPlayer(); this.resetVehicles(); }
+  private upgrade(kind: "engine" | "handling" | "nitro"): void {
+    const key = kind === "engine" ? "engineLevel" : kind === "handling" ? "handlingLevel" : "nitroLevel";
+    this.progress.garage[key] = Math.min(3, this.progress.garage[key] + 1); saveProgress(this.progress); this.createPlayer(); this.resetVehicles();
+  }
+  private showSection(section: "race" | "garage" | "regions" | "settings"): void { this.hud.openSection(section); }
+  private mapPoint(position: Vector3): MapMarker { return { x: Math.max(8, Math.min(92, 50 + position.x * (this.region.id === "sirdaryo" ? 0.43 : 0.62))), y: Math.max(10, Math.min(90, 50 - position.z * (this.region.id === "sirdaryo" ? 0.68 : 0.86))) }; }
 
   update(delta: number): void {
     const safeDelta = Math.min(0.05, delta); this.warningTimer = Math.max(0, this.warningTimer - safeDelta); if (this.warningTimer === 0) this.warning = ""; this.environment.update(safeDelta);
@@ -89,7 +167,7 @@ export class GameWorld {
       if (this.race.update(this.player, this.rivals, this.track)) this.finishRace();
     }
     this.camera.update(safeDelta, this.player, controls.nitro && controls.throttle > 0.3); this.audio.update(this.player.speed, controls.nitro);
-    this.hud.update({ speed: this.player.speedKph, nitro: this.player.nitro, lap: this.race.lap, totalLaps: this.race.totalLaps, position: this.race.position, countdown: this.raceState === "countdown" ? this.countdown : null, weather: this.environment.currentWeather, raceState: this.raceState, graphics: this.graphics, elapsed: this.elapsed, cameraMode: this.camera.currentMode, drifting: this.player.drifting, playerMap: this.mapPoint(this.player.root.position), rivalsMap: this.rivals.map((rival) => this.mapPoint(rival.position)), sirdaryoUnlocked: this.sirdaryoUnlocked, warning: this.warning });
+    this.hud.update({ speed: this.player.speedKph, nitro: this.player.nitroPercent, lap: this.race.lap, totalLaps: this.race.totalLaps, position: this.race.position, countdown: this.raceState === "countdown" ? this.countdown : null, weather: this.environment.currentWeather, raceState: this.raceState, graphics: this.graphics, elapsed: this.elapsed, cameraMode: this.camera.currentMode, drifting: this.player.drifting, playerMap: this.mapPoint(this.player.root.position), rivalsMap: this.rivals.map((rival) => this.mapPoint(rival.position)), highestUnlockedRegion: this.progress.highestUnlockedRegion, selectedRegion: this.region, garage: this.progress.garage, warning: this.warning });
   }
   dispose(): void { window.removeEventListener("keydown", this.handleKey); this.input.dispose(); this.hud.dispose(); this.audio.dispose(); }
   get weather(): WeatherMode { return this.environment.currentWeather; }

@@ -133,3 +133,69 @@ export function buildTashkentTrack(scene: Scene): TrackData {
   }
   return track;
 }
+
+function buildSirdaryoLoopPoints(): Vector3[] {
+  const points: Vector3[] = [];
+  const count = 120;
+  for (let index = 0; index < count; index += 1) {
+    const theta = (index / count) * Math.PI * 2;
+    const radiusX = 92 + Math.sin(theta * 2) * 8;
+    const radiusZ = 48 + Math.cos(theta * 3) * 3;
+    const x = Math.cos(theta) * radiusX;
+    const z = Math.sin(theta) * radiusZ + Math.sin(theta * 2) * 10;
+    points.push(new Vector3(x, 0.06, z));
+  }
+  return points;
+}
+
+export function buildSirdaryoTrack(scene: Scene): TrackData {
+  const track = new TrackData(buildSirdaryoLoopPoints(), 10.8);
+  const roadMaterial = new StandardMaterial("sirdaryo-road-material", scene);
+  const roadTexture = new Texture(ASSETS.asphalt, scene);
+  roadTexture.uScale = 25;
+  roadTexture.vScale = 2.6;
+  roadMaterial.diffuseTexture = roadTexture;
+  roadMaterial.diffuseColor = new Color3(0.12, 0.125, 0.112);
+  roadMaterial.specularColor = Color3.Black();
+  const shoulderMaterial = new StandardMaterial("sirdaryo-shoulder-material", scene);
+  shoulderMaterial.diffuseColor = new Color3(0.36, 0.285, 0.14);
+  shoulderMaterial.specularColor = Color3.Black();
+  const markerMaterial = new StandardMaterial("sirdaryo-marker-material", scene);
+  markerMaterial.diffuseColor = new Color3(0.68, 0.64, 0.49);
+  markerMaterial.emissiveColor = new Color3(0.018, 0.014, 0.006);
+  const railMaterial = new StandardMaterial("sirdaryo-rail-material", scene);
+  railMaterial.diffuseColor = new Color3(0.46, 0.5, 0.48);
+
+  for (let index = 0; index < track.points.length; index += 1) {
+    const current = track.points[index];
+    const next = track.points[(index + 1) % track.points.length];
+    const midpoint = current.add(next).scale(0.5);
+    const length = Vector3.Distance(current, next) + 0.55;
+    const tangent = next.subtract(current).normalize();
+    const shoulder = MeshBuilder.CreateBox(`sirdaryo-shoulder-${index}`, { width: track.width + 2.2, height: 0.05, depth: length + 0.2 }, scene);
+    shoulder.position = new Vector3(midpoint.x, 0.03, midpoint.z);
+    shoulder.rotation.y = Math.atan2(tangent.x, tangent.z);
+    shoulder.material = shoulderMaterial;
+    const road = MeshBuilder.CreateBox(`sirdaryo-road-${index}`, { width: track.width, height: 0.1, depth: length }, scene);
+    road.position = new Vector3(midpoint.x, 0.1, midpoint.z);
+    road.rotation.y = Math.atan2(tangent.x, tangent.z);
+    road.material = roadMaterial;
+  }
+  for (let index = 0; index < track.points.length; index += 5) {
+    const point = track.points[index];
+    const tangent = track.tangents[index];
+    const marker = MeshBuilder.CreateBox(`sirdaryo-marker-${index}`, { width: 0.24, height: 0.03, depth: 2.65 }, scene);
+    marker.position = point.add(new Vector3(0, 0.16, 0));
+    marker.rotation.y = Math.atan2(tangent.x, tangent.z);
+    marker.material = markerMaterial;
+  }
+  for (let index = 6; index < track.points.length; index += 12) {
+    const point = track.pointAt(index, -track.width / 2 - 1.75);
+    const tangent = track.tangents[index];
+    const rail = MeshBuilder.CreateBox(`sirdaryo-rail-${index}`, { width: 0.18, height: 0.52, depth: 11 }, scene);
+    rail.position = point.add(new Vector3(0, 0.5, 0));
+    rail.rotation.y = Math.atan2(tangent.x, tangent.z);
+    rail.material = railMaterial;
+  }
+  return track;
+}
